@@ -1,59 +1,98 @@
 import React, { useState } from "react";
 import "./App.css";
-import { Howl } from "howler";
+import PlaylistManager from "./components/PlaylistManager";
+import TrackList from "./components/Tracklist";
+import TrackPlayer from "./components/TrackPlayer";
+import PlaylistControls from "./components/PlaylistControls";
 
 function App() {
-  const [currentTrack, setCurrentTrack] = useState(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [playlist, setPlaylist] = useState([]);
+  const [currentTrackId, setCurrentTrackId] = useState(null);
   const [volume, setVolume] = useState(0.5);
 
-  const calmTrack = new Howl({ src: ["calm.mp3"], loop: true, volume });
-  const intenseTrack = new Howl({ src: ["intense.mp3"], loop: true, volume });
+  const [isRepeatOne, setRepeatOne] = useState(false);
+  const [isRepeatAll, setRepeatAll] = useState(false);
+  const [isShuffle, setShuffle] = useState(false);
 
-  const playTrack = (track) => {
-    if (track === "calm") {
-      calmTrack.play();
-      setCurrentTrack("calm");
+  const currentIndex = playlist.findIndex((t) => t.id === currentTrackId);
+  const currentTrack = playlist.find((t) => t.id === currentTrackId);
+
+  const handleVolumeChange = (e) => {
+    setVolume(parseFloat(e.target.value));
+  };
+
+  const playNext = () => {
+    if (isRepeatOne) return;
+
+    if (isShuffle) {
+      const otherTracks = playlist.filter((_, i) => i !== currentIndex);
+      if (otherTracks.length > 0) {
+        const randomTrack =
+          otherTracks[Math.floor(Math.random() * otherTracks.length)];
+        setCurrentTrackId(randomTrack.id);
+      }
     } else {
-      intenseTrack.play();
-      setCurrentTrack("intense");
+      const nextIndex = currentIndex + 1;
+      if (nextIndex < playlist.length) {
+        setCurrentTrackId(playlist[nextIndex].id);
+      } else if (isRepeatAll) {
+        setCurrentTrackId(playlist[0]?.id);
+      }
     }
-    setIsPlaying(true);
   };
 
-  const pauseTrack = () => {
-    calmTrack.pause();
-    intenseTrack.pause();
-    setIsPlaying(false);
-  };
-
-  const changeVolume = (event) => {
-    const newVolume = event.target.value;
-    setVolume(newVolume);
-    calmTrack.volume(newVolume);
-    intenseTrack.volume(newVolume);
+  const playPrev = () => {
+    const prevIndex = currentIndex - 1;
+    if (prevIndex >= 0) {
+      setCurrentTrackId(playlist[prevIndex].id);
+    } else if (isRepeatAll) {
+      setCurrentTrackId(playlist[playlist.length - 1]?.id);
+    }
   };
 
   return (
     <div className="App">
       <h1>Jukebox JDR</h1>
-      <div>
-        <button onClick={() => playTrack("calm")}>Play Calme</button>
-        <button onClick={() => playTrack("intense")}>Play Intense</button>
-        <button onClick={pauseTrack}>Pause</button>
-      </div>
-      <div>
+
+      <PlaylistManager onPlaylistChange={setPlaylist} />
+
+      <TrackList
+        playlist={playlist}
+        currentTrackId={currentTrackId}
+        onSelectTrack={setCurrentTrackId}
+      />
+
+      {currentTrack && (
+        <TrackPlayer
+          track={currentTrack}
+          initialVersion="calm"
+          volume={volume}
+          onTrackEnd={playNext}
+        />
+      )}
+
+      <PlaylistControls
+        onNext={playNext}
+        onPrev={playPrev}
+        isRepeatOne={isRepeatOne}
+        isRepeatAll={isRepeatAll}
+        isShuffle={isShuffle}
+        setRepeatOne={setRepeatOne}
+        setRepeatAll={setRepeatAll}
+        setShuffle={setShuffle}
+      />
+
+      <div style={{ marginTop: "1rem" }}>
         <label>Volume: </label>
         <input
           type="range"
           min="0"
           max="1"
-          step="0.1"
+          step="0.01"
           value={volume}
-          onChange={changeVolume}
+          onChange={handleVolumeChange}
         />
       </div>
-      <div>{isPlaying ? <p>Playing: {currentTrack}</p> : <p>Paused</p>}</div>
     </div>
   );
 }
